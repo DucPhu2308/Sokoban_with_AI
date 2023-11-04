@@ -119,6 +119,16 @@ class Sokoban:
         player_image = Image.open("images/player.png").resize((self.TILE_SIZE, self.TILE_SIZE))
         self.player_image = ImageTk.PhotoImage(player_image)
 
+        box_image = Image.open("images/box.png").resize((self.TILE_SIZE, self.TILE_SIZE))
+        self.box_image = ImageTk.PhotoImage(box_image)
+
+        wall_image = Image.open("images/wall.png").resize((self.TILE_SIZE, self.TILE_SIZE))
+        self.wall_image = ImageTk.PhotoImage(wall_image)
+
+        empty_image = Image.open("images/grass.png").resize((self.TILE_SIZE, self.TILE_SIZE))
+        self.empty_image = ImageTk.PhotoImage(empty_image)
+
+
     def move_player(self, event):
         directions = ["Up", "Down", "Left", "Right"]
         if event.keysym not in directions:
@@ -134,16 +144,16 @@ class Sokoban:
             for j, cell in enumerate(row):
                 x, y = j * 50, i * 50
                 if cell == self.gameplay.WALL_SYMBOL:
-                    self.canvas.create_rectangle(x, y, x+50, y+50, fill='grey')
+                    self.canvas.create_image(x+25, y+25, image=self.wall_image)
                 elif cell == self.gameplay.EMPTY_SYMBOL:
-                    self.canvas.create_rectangle(x, y, x+50, y+50, fill='white')
+                    self.canvas.create_image(x+25,y+25, image=self.empty_image)
                 elif cell == self.gameplay.BOX_SYMBOL:
                     if [i, j] in self.gameplay.targets:
-                        self.canvas.create_oval(x+10, y+10, x+40, y+40, fill='red')
+                        self.canvas.create_image(x+25, y+25, image=self.box_image)
                     else:
-                        self.canvas.create_oval(x+10, y+10, x+40, y+40, fill='green')
+                        self.canvas.create_image(x+25, y+25, image=self.box_image)
                 elif cell == self.gameplay.TARGET_SYMBOL:
-                    self.canvas.create_rectangle(x, y, x+50, y+50, fill='white')
+                    self.canvas.create_image(x+25,y+25, image=self.empty_image)
                     self.canvas.create_oval(x+20, y+20, x+30, y+30, fill='red')
                 elif cell == self.gameplay.PLAYER_SYMBOL:
                     self.canvas.create_image(x+25, y+25, image=self.player_image)
