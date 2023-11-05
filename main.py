@@ -128,6 +128,8 @@ class Sokoban:
         empty_image = Image.open("images/grass.png").resize((self.TILE_SIZE, self.TILE_SIZE))
         self.empty_image = ImageTk.PhotoImage(empty_image)
 
+        target_image = Image.open("images/target.png").resize((self.TILE_SIZE, self.TILE_SIZE))
+        self.target_image = ImageTk.PhotoImage(target_image)
 
     def move_player(self, event):
         directions = ["Up", "Down", "Left", "Right"]
@@ -149,7 +151,7 @@ class Sokoban:
                     self.canvas.create_image(x+25,y+25, image=self.empty_image)
                 elif cell == self.gameplay.BOX_SYMBOL:
                     if [i, j] in self.gameplay.targets:
-                        self.canvas.create_image(x+25, y+25, image=self.box_image)
+                        self.canvas.create_image(x+25, y+25, image=self.target_image)
                     else:
                         self.canvas.create_image(x+25, y+25, image=self.box_image)
                 elif cell == self.gameplay.TARGET_SYMBOL:
