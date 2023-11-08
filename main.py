@@ -27,15 +27,15 @@ class Sokoban:
         #game frame
         self.canvas = tk.Canvas(self.root, width=self.gameplay.width * self.TILE_SIZE, 
                                 height=self.gameplay.height * self.TILE_SIZE, background="white")
-        self.canvas.place(x=350, y=120)
+        self.canvas.place(x=350, y=90)
 
         #title and step label
         self.title = tk.Label(self.root, text="Sokoban", font=("Arial", 30, "bold"))
         self.title.place(x=560, y=20)
         self.stepLabel = tk.Label(self.root, text=f"Step: 0", font=("Arial", 20))
-        self.stepLabel.place(x=350, y=75)
+        self.stepLabel.place(x=980, y=100)
         self.visitedLabel = tk.Label(self.root, text=f"Visited: 0", font=("Arial", 20))
-        self.visitedLabel.place(x=500, y=75)
+        self.visitedLabel.place(x=980, y=150)
 
         #button frame
         self.btnFrame = tk.Frame(self.root, width=200, height=500, background="cyan")
@@ -43,6 +43,8 @@ class Sokoban:
         self.btnFrame.pack_propagate(0) # don't shrink
         BUTTON_WIDTH = 10
         PADDING = 15
+        self.btnUndo = tk.Button(self.btnFrame, text="Undo", font=("Arial", 20), width=10, command=self.undo)
+        self.btnUndo.pack(pady=PADDING)
         #combobox for algorithm
         cbAlgo = ttk.Combobox(self.btnFrame, values=["BFS", "DFS", "IDS", "UCS", "Greedy","A*"], font=("Arial", 20), 
                               width=BUTTON_WIDTH, state="readonly")
@@ -63,9 +65,12 @@ class Sokoban:
         btnLoad = tk.Button(self.btnFrame, text="Load level", font=("Arial", 20), 
                      width=BUTTON_WIDTH, command=lambda: self.load_level(cbLevel.current()))
         btnLoad.pack(pady=PADDING)
+    def undo(self):
+        if self.gameplay.undo():
+            self.stepLabel.config(text=f"Step: {self.gameplay.step}")
+            self.draw_board(self.gameplay.board)
     def load_level(self, level):
         self.gameplay.load_level(level)
-        print(self.gameplay.board)
         self.stepLabel.config(text=f"Step: 0")
         self.draw_board(self.gameplay.board)
     def solve(self, choice):
@@ -128,11 +133,14 @@ class Sokoban:
         empty_image = Image.open("images/grass.png").resize((self.TILE_SIZE, self.TILE_SIZE))
         self.empty_image = ImageTk.PhotoImage(empty_image)
 
+        box_target_image = Image.open("images/box_on_target.png").resize((self.TILE_SIZE, self.TILE_SIZE))
+        self.box_target_image = ImageTk.PhotoImage(box_target_image)
+
         target_image = Image.open("images/target.png").resize((self.TILE_SIZE, self.TILE_SIZE))
         self.target_image = ImageTk.PhotoImage(target_image)
 
     def move_player(self, event):
-        directions = ["Up", "Down", "Left", "Right"]
+        directions = ["Up", "Down", "Left", "Right", "w", "s", "a", "d"]
         if event.keysym not in directions:
             return
         if self.gameplay.move_player(event.keysym):
@@ -151,12 +159,13 @@ class Sokoban:
                     self.canvas.create_image(x+25,y+25, image=self.empty_image)
                 elif cell == self.gameplay.BOX_SYMBOL:
                     if [i, j] in self.gameplay.targets:
-                        self.canvas.create_image(x+25, y+25, image=self.target_image)
+                        self.canvas.create_image(x+25, y+25, image=self.box_target_image)
                     else:
                         self.canvas.create_image(x+25, y+25, image=self.box_image)
                 elif cell == self.gameplay.TARGET_SYMBOL:
                     self.canvas.create_image(x+25,y+25, image=self.empty_image)
-                    self.canvas.create_oval(x+20, y+20, x+30, y+30, fill='red')
+                    # self.canvas.create_oval(x+20, y+20, x+30, y+30, fill='red')
+                    self.canvas.create_image(x+25,y+25, image=self.target_image)
                 elif cell == self.gameplay.PLAYER_SYMBOL:
                     self.canvas.create_image(x+25, y+25, image=self.player_image)
 
