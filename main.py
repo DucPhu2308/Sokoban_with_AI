@@ -77,13 +77,13 @@ class Sokoban:
         if choice == "BFS":
             self.solveBFS()
         elif choice == "DFS":
-            self.solveDFS(self.state)
+            self.solveDFS()
         elif choice == "IDS":
-            self.solveIDS(self.state)
+            self.solveIDS()
         elif choice == "UCS":
             self.solveUCS(self.state)
         elif choice == "Greedy":
-            self.solveGreedy(self.state)
+            self.solveGreedy()
         elif choice == "A*":
             self.solveAStar(self.state)
     def solveBFS(self):
@@ -104,6 +104,86 @@ class Sokoban:
                     visited.add(tuple(new_gameplay.board.flatten()))
                     queue.append((new_gameplay, path + [move]))
         return False
+    def solveDFS(self):
+        visited = set()
+        stack = deque([(self.gameplay, [])])
+        visited.add(tuple(self.gameplay.board.flatten()))
+
+        while stack:
+            current_gameplay, path = stack.pop()
+
+            if current_gameplay.check_win():
+                self.visitedLabel["text"] = f"Visited: {len(visited)}"
+                self.animateSolution(path)
+                return True
+
+            for new_gameplay, move in self.getChildren(current_gameplay):
+                if tuple(new_gameplay.board.flatten()) not in visited:
+                    visited.add(tuple(new_gameplay.board.flatten()))
+                    stack.append((new_gameplay, path + [move]))
+        return False
+    def solveIDS(self):
+        max_depth = 5
+        visited = set()
+        latestStates = deque([(self.gameplay, [], max_depth)])
+        visited.add(tuple(self.gameplay.board.flatten()))
+        while latestStates:
+            stack = latestStates.copy()
+            latestStates.clear()
+            max_depth += 5
+            while stack:
+                current_gameplay, path, depth = stack.pop()
+                
+                #check win state
+                if current_gameplay.check_win():
+                    self.visitedLabel["text"] = f"Visited: {len(visited)}"
+                    self.animateSolution(path)
+                    return True
+                
+                if depth == 0:
+                    latestStates.append((current_gameplay, path, max_depth))
+                    continue
+                for new_gameplay, move in self.getChildren(current_gameplay):
+                    if tuple(new_gameplay.board.flatten()) not in visited:
+                        visited.add(tuple(new_gameplay.board.flatten()))
+                        stack.append((new_gameplay, path + [move], depth - 1))
+        return False
+    def solveGreedy(self):
+        visited = set()
+        queue = deque([(self.gameplay, [],0)])
+        visited.add(tuple(self.gameplay.board.flatten()))
+
+        while queue:
+            current_gameplay, path, cost = queue.popleft()
+
+            if current_gameplay.check_win():
+                self.visitedLabel["text"] = f"Visited: {len(visited)}"
+                self.animateSolution(path)
+                return True
+
+            for new_gameplay, move in self.getChildren(current_gameplay):
+                if tuple(new_gameplay.board.flatten()) not in visited:
+                    visited.add(tuple(new_gameplay.board.flatten()))
+                    queue.append((new_gameplay, path + [move], self.heuristic(new_gameplay)))
+                    queue = deque(sorted(queue, key=lambda x: x[2]))
+        return False
+    def heuristic(self, gameplay):
+        #distance from box to the nearest target
+        box_positions = np.argwhere(gameplay.board == gameplay.BOX_SYMBOL).tolist()
+        #exclude box that is already on target
+        box_positions = [box for box in box_positions if box not in gameplay.targets]
+        # target_positions = np.argwhere(gameplay.board == gameplay.TARGET_SYMBOL).tolist()
+        target_positions = gameplay.targets
+        total_distance = 0
+        for box_position in box_positions:
+            min_distance = 100000
+            for target_position in target_positions:
+                distance = abs(box_position[0] - target_position[0]) + abs(box_position[1] - target_position[1])
+                if distance < min_distance:
+                    min_distance = distance
+            total_distance += min_distance
+            
+        return total_distance
     def animateSolution(self, path):
         for move in path:
             self.gameplay.move_player(move)
