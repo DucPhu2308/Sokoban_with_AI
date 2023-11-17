@@ -5,6 +5,7 @@ import numpy as np
 from gameplay import Gameplay
 import copy
 from collections import deque
+from queue import PriorityQueue
 import time
 
 class Sokoban:
@@ -13,8 +14,11 @@ class Sokoban:
         self.root.title("Sokoban")
         self.root.geometry("1280x720")
         self.root.resizable(False, False)
-        self.root.title("8-puzzle")
-
+        self.root.title("Sokoban")
+        bg_image = Image.open("images/bg.png").resize((1280, 720))
+        self.bg_image = ImageTk.PhotoImage(bg_image)
+        self.bg_label = tk.Label(self.root, image=self.bg_image)
+        self.bg_label.place(x=0, y=0)
         self.TILE_SIZE = 50
         self.load_images()
 
@@ -26,19 +30,19 @@ class Sokoban:
     def initializeComponents(self):
         #game frame
         self.canvas = tk.Canvas(self.root, width=self.gameplay.width * self.TILE_SIZE, 
-                                height=self.gameplay.height * self.TILE_SIZE, background="white")
+                                height=self.gameplay.height * self.TILE_SIZE, highlightthickness=0)
         self.canvas.place(x=350, y=90)
 
         #title and step label
-        self.title = tk.Label(self.root, text="Sokoban", font=("Arial", 30, "bold"))
+        self.title = tk.Label(self.root, text="Sokoban", font=("Arial", 30, "bold"), bg="lightskyblue1")
         self.title.place(x=560, y=20)
-        self.stepLabel = tk.Label(self.root, text=f"Step: 0", font=("Arial", 20))
+        self.stepLabel = tk.Label(self.root, text=f"Step: 0", font=("Arial", 20), bg="lightskyblue1")
         self.stepLabel.place(x=980, y=100)
-        self.visitedLabel = tk.Label(self.root, text=f"Visited: 0", font=("Arial", 20))
+        self.visitedLabel = tk.Label(self.root, text=f"Visited: 0", font=("Arial", 20), bg="lightskyblue1")
         self.visitedLabel.place(x=980, y=150)
 
         #button frame
-        self.btnFrame = tk.Frame(self.root, width=200, height=500, background="cyan")
+        self.btnFrame = tk.Frame(self.root, width=200, height=500, background="navajo white")
         self.btnFrame.place(x=100, y=120)
         self.btnFrame.pack_propagate(0) # don't shrink
         BUTTON_WIDTH = 10
@@ -46,7 +50,7 @@ class Sokoban:
         self.btnUndo = tk.Button(self.btnFrame, text="Undo", font=("Arial", 20), width=10, command=self.undo)
         self.btnUndo.pack(pady=PADDING)
         #combobox for algorithm
-        cbAlgo = ttk.Combobox(self.btnFrame, values=["BFS", "DFS", "IDS", "UCS", "Greedy","A*"], font=("Arial", 20), 
+        cbAlgo = ttk.Combobox(self.btnFrame, values=["BFS", "DFS", "IDS", "UCS", "Greedy","A*","Beam"], font=("Arial", 20), 
                               width=BUTTON_WIDTH, state="readonly")
         # stop control with up and down arrow keys
         cbAlgo.bind("<<ComboboxSelected>>", lambda event: self.root.focus_set())
@@ -75,17 +79,21 @@ class Sokoban:
         self.draw_board(self.gameplay.board)
     def solve(self, choice):
         if choice == "BFS":
-            self.solveBFS()
+            result = self.solveBFS()
         elif choice == "DFS":
-            self.solveDFS()
+            result = self.solveDFS()
         elif choice == "IDS":
-            self.solveIDS()
+            result = self.solveIDS()
         elif choice == "UCS":
-            self.solveUCS(self.state)
+            result = self.solveUCS()
         elif choice == "Greedy":
-            self.solveGreedy()
+            result = self.solveGreedy()
         elif choice == "A*":
-            self.solveAStar(self.state)
+            result = self.solveAStar()
+        elif choice == "Beam":
+            result = self.solveBeam(k=2)
+        if not result:
+            messagebox.showinfo("No solution", "No solution found!")
     def solveBFS(self):
         visited = set()
         queue = deque([(self.gameplay, [])])
@@ -103,6 +111,25 @@ class Sokoban:
                 if tuple(new_gameplay.board.flatten()) not in visited:
                     visited.add(tuple(new_gameplay.board.flatten()))
                     queue.append((new_gameplay, path + [move]))
+        return False
+    def solveUCS(self):
+        visited = set()
+        queue = deque([(self.gameplay, [], 0)])
+        visited.add(tuple(self.gameplay.board.flatten()))
+
+        while queue:
+            current_gameplay, path, cost = queue.popleft()
+
+            if current_gameplay.check_win():
+                self.visitedLabel["text"] = f"Visited: {len(visited)}"
+                self.animateSolution(path)
+                return True
+
+            for new_gameplay, move in self.getChildren(current_gameplay):
+                if tuple(new_gameplay.board.flatten()) not in visited:
+                    visited.add(tuple(new_gameplay.board.flatten()))
+                    queue.append((new_gameplay, path + [move], new_gameplay.step))
+                    queue = deque(sorted(queue, key=lambda x: x[2]))
         return False
     def solveDFS(self):
         visited = set()
@@ -167,6 +194,25 @@ class Sokoban:
                     queue.append((new_gameplay, path + [move], self.heuristic(new_gameplay)))
                     queue = deque(sorted(queue, key=lambda x: x[2]))
         return False
+    def solveAStar(self):
+        visited = set()
+        queue = deque([(self.gameplay, [],0)])
+        visited.add(tuple(self.gameplay.board.flatten()))
+
+        while queue:
+            current_gameplay, path, cost = queue.popleft()
+
+            if current_gameplay.check_win():
+                self.visitedLabel["text"] = f"Visited: {len(visited)}"
+                self.animateSolution(path)
+                return True
+
+            for new_gameplay, move in self.getChildren(current_gameplay):
+                if tuple(new_gameplay.board.flatten()) not in visited:
+                    visited.add(tuple(new_gameplay.board.flatten()))
+                    queue.append((new_gameplay, path + [move], self.heuristic(new_gameplay) + new_gameplay.step))
+                    queue = deque(sorted(queue, key=lambda x: x[2]))
+        return False
     def heuristic(self, gameplay):
         #distance from box to the nearest target
         box_positions = np.argwhere(gameplay.board == gameplay.BOX_SYMBOL).tolist()
@@ -184,13 +230,39 @@ class Sokoban:
             total_distance += min_distance
             
         return total_distance
+    def solveBeam(self, k=3):
+        visited = set()
+        queue = deque([(self.gameplay, [])])
+        visited.add(tuple(self.gameplay.board.flatten()))
+        while queue:
+            k_loop = k
+            current_gameplay, path = queue.popleft()
+    
+            if current_gameplay.check_win():
+                self.visitedLabel["text"] = f"Visited: {len(visited)}"
+                self.animateSolution(path)
+                return True
+            
+            schedule = self.getChildren(current_gameplay)
+            schedule = sorted(schedule , key=lambda x: self.heuristic(x[0]))
+            # Sinh các trạng thái kế tiếp và thêm vào queue
+            for new_gameplay, move in schedule:
+                if tuple(new_gameplay.board.flatten()) not in visited:
+                    if k_loop > 0:
+                        visited.add(tuple(new_gameplay.board.flatten()))
+                        queue.append((new_gameplay, path + [move]))
+                        k_loop = k_loop - 1
+                    else:
+                        break
+
+        return False
     def animateSolution(self, path):
         for move in path:
             self.gameplay.move_player(move)
             self.stepLabel.config(text=f"Step: {self.gameplay.step}")
             self.draw_board(self.gameplay.board)
             self.root.update()
-            time.sleep(0.2)
+            time.sleep(0.1)
     def getChildren(self, gameplay):
         directions = ["Up", "Down", "Left", "Right"]
         children = []
@@ -247,6 +319,7 @@ class Sokoban:
                     # self.canvas.create_oval(x+20, y+20, x+30, y+30, fill='red')
                     self.canvas.create_image(x+25,y+25, image=self.target_image)
                 elif cell == self.gameplay.PLAYER_SYMBOL:
+                    self.canvas.create_image(x+25,y+25, image=self.empty_image)
                     self.canvas.create_image(x+25, y+25, image=self.player_image)
 
 if __name__ == "__main__":
