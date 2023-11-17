@@ -282,7 +282,7 @@ class Sokoban:
         wall_image = Image.open("images/wall.png").resize((self.TILE_SIZE, self.TILE_SIZE))
         self.wall_image = ImageTk.PhotoImage(wall_image)
 
-        empty_image = Image.open("images/grass.png").resize((self.TILE_SIZE, self.TILE_SIZE))
+        empty_image = Image.open("images/floor.png").resize((self.TILE_SIZE, self.TILE_SIZE))
         self.empty_image = ImageTk.PhotoImage(empty_image)
 
         box_target_image = Image.open("images/box_on_target.png").resize((self.TILE_SIZE, self.TILE_SIZE))
