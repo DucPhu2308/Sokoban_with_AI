@@ -27,11 +27,13 @@ class Sokoban:
         self.draw_board(self.gameplay.board)
 
         self.root.bind("<Key>", self.move_player)
+    
     def initializeComponents(self):
         #game frame
         self.canvas = tk.Canvas(self.root, width=self.gameplay.width * self.TILE_SIZE, 
                                 height=self.gameplay.height * self.TILE_SIZE, highlightthickness=0)
         self.canvas.place(x=350, y=90)
+        self.canvas.bind("<Button-1>", lambda event: self.canvas_click(event))
 
         #title and step label
         self.title = tk.Label(self.root, text="Sokoban", font=("Arial", 30, "bold"), bg="lightskyblue1")
@@ -69,6 +71,63 @@ class Sokoban:
         btnLoad = tk.Button(self.btnFrame, text="Load level", font=("Arial", 20), 
                      width=BUTTON_WIDTH, command=lambda: self.load_level(cbLevel.current()))
         btnLoad.pack(pady=PADDING)
+
+        # choose element for level editor
+        # use square button with element image as background
+        # and bind click event to change element
+        self.btnFrame2 = tk.Frame(self.root, width=200, height=200, background="lightskyblue1")
+        self.btnFrame2.place(x=980, y=200)
+        self.btnFrame2.grid_propagate(0)
+        self.btnWall = tk.Button(self.btnFrame2, image=self.wall_image,
+                                    command=lambda: self.change_element(self.gameplay.WALL_SYMBOL))
+        self.btnWall.grid(row=0, column=0, padx=5, pady=5)
+        self.btnEmpty = tk.Button(self.btnFrame2, image=self.empty_image,
+                                    command=lambda: self.change_element(self.gameplay.EMPTY_SYMBOL))
+        self.btnEmpty.grid(row=0, column=1, padx=5, pady=5)
+        self.btnTarget = tk.Button(self.btnFrame2, image=self.target_image,
+                                    command=lambda: self.change_element(self.gameplay.TARGET_SYMBOL))
+        self.btnTarget.grid(row=1, column=0, padx=5, pady=5)
+        self.btnBox = tk.Button(self.btnFrame2, image=self.box_image,
+                                    command=lambda: self.change_element(self.gameplay.BOX_SYMBOL))
+        self.btnBox.grid(row=1, column=1, padx=5, pady=5)
+        self.btnPlayer = tk.Button(self.btnFrame2, image=self.player_image,
+                                    command=lambda: self.change_element(self.gameplay.PLAYER_SYMBOL))
+        self.btnPlayer.grid(row=0, column=3, padx=5, pady=5)
+        self.selectedElement = self.gameplay.WALL_SYMBOL # default element
+        self.selectedElementLabel = tk.Label(self.btnFrame2, text="Selected:", font=("Arial", 20), bg="lightskyblue1")
+        self.selectedElementLabel.grid(row=2, column=0, columnspan=2, pady=5)
+        # selected element image label
+        self.selectedImage = tk.Label(self.btnFrame2, image=self.wall_image)
+        self.selectedImage.grid(row=2, column=2, columnspan=2, pady=5)
+    def change_element(self, element):
+        self.selectedElement = element
+        # change selected element image label
+        if element == self.gameplay.WALL_SYMBOL:
+            self.selectedImage.config(image=self.wall_image)
+        elif element == self.gameplay.EMPTY_SYMBOL:
+            self.selectedImage.config(image=self.empty_image)
+        elif element == self.gameplay.TARGET_SYMBOL:
+            self.selectedImage.config(image=self.target_image)
+        elif element == self.gameplay.BOX_SYMBOL:
+            self.selectedImage.config(image=self.box_image)
+        elif element == self.gameplay.PLAYER_SYMBOL:
+            self.selectedImage.config(image=self.player_image)
+    def canvas_click(self, event):
+        # print row and column number
+        row = event.y // self.TILE_SIZE
+        col = event.x // self.TILE_SIZE
+        if self.selectedElement == self.gameplay.PLAYER_SYMBOL:
+            # move player to new position
+            cur_row, cur_col = np.argwhere(self.gameplay.board == self.gameplay.PLAYER_SYMBOL)[0]
+            self.gameplay.board[cur_row][cur_col] = self.gameplay.EMPTY_SYMBOL
+        elif self.selectedElement == self.gameplay.TARGET_SYMBOL or \
+            self.gameplay.board[row][col] == self.gameplay.TARGET_SYMBOL:
+            self.gameplay.board[row][col] = self.selectedElement
+            # reload targets
+            self.gameplay.targets = np.argwhere(self.gameplay.board == self.gameplay.TARGET_SYMBOL).tolist()
+
+        self.gameplay.board[row][col] = self.selectedElement
+        self.draw_board(self.gameplay.board)   
     def undo(self):
         if self.gameplay.undo():
             self.stepLabel.config(text=f"Step: {self.gameplay.step}")
