@@ -62,14 +62,14 @@ class Sokoban:
                      width=BUTTON_WIDTH, command=lambda: self.solve(cbAlgo.get()))
         btnSolve.pack(pady=PADDING)
         #combobox for level
-        cbLevel = ttk.Combobox(self.btnFrame, values=[f"Level {i}" for i in range(len(self.gameplay.levels))], font=("Arial", 20), 
+        self.cbLevel = ttk.Combobox(self.btnFrame, values=[f"Level {i}" for i in range(len(self.gameplay.levels))], font=("Arial", 20), 
                               width=BUTTON_WIDTH, state="readonly")
         # stop control with up and down arrow keys
-        cbLevel.bind("<<ComboboxSelected>>", lambda event: self.root.focus_set())
-        cbLevel.current(0)
-        cbLevel.pack(pady=PADDING)
+        self.cbLevel.bind("<<ComboboxSelected>>", lambda event: self.root.focus_set())
+        self.cbLevel.current(0)
+        self.cbLevel.pack(pady=PADDING)
         btnLoad = tk.Button(self.btnFrame, text="Load level", font=("Arial", 20), 
-                     width=BUTTON_WIDTH, command=lambda: self.load_level(cbLevel.current()))
+                     width=BUTTON_WIDTH, command=lambda: self.load_level(self.cbLevel.current()))
         btnLoad.pack(pady=PADDING)
 
         # choose element for level editor
@@ -99,6 +99,11 @@ class Sokoban:
         # selected element image label
         self.selectedImage = tk.Label(self.btnFrame2, image=self.wall_image)
         self.selectedImage.grid(row=2, column=2, columnspan=2, pady=5)
+
+        # text area for log AI result
+        self.logText = tk.Text(self.root, width=22, height=14, font=("Arial", 12), state="disabled")
+        self.logText.place(x=980, y=420)
+
     def change_element(self, element):
         self.selectedElement = element
         # change selected element image label
@@ -152,7 +157,18 @@ class Sokoban:
         elif choice == "Beam":
             result = self.solveBeam(k=2)
         if not result:
+            self.logText.config(state="normal")
+            self.logText.insert(tk.END, 
+                                f"{choice} \nLevel: {self.cbLevel.current()}\nNo solution\n\n")
+            self.logText.config(state="disabled")
             messagebox.showinfo("No solution", "No solution found!")
+        else:
+            self.animateSolution(result[0])
+            self.visitedLabel["text"] = f"Visited: {result[1]}"
+            self.logText.config(state="normal")
+            self.logText.insert(tk.END, 
+                                f"{choice} \nLevel: {self.cbLevel.current()}\nVisited: {result[1]}\nStep: {result[2]}\n\n")
+            self.logText.config(state="disabled")
     def solveBFS(self):
         visited = set()
         queue = deque([(self.gameplay, [])])
@@ -162,15 +178,13 @@ class Sokoban:
             current_gameplay, path = queue.popleft()
 
             if current_gameplay.check_win():
-                self.visitedLabel["text"] = f"Visited: {len(visited)}"
-                self.animateSolution(path)
-                return True
+                return path, len(visited), current_gameplay.step
 
             for new_gameplay, move in self.getChildren(current_gameplay):
                 if tuple(new_gameplay.board.flatten()) not in visited:
                     visited.add(tuple(new_gameplay.board.flatten()))
                     queue.append((new_gameplay, path + [move]))
-        return False
+        return None
     def solveUCS(self):
         visited = set()
         queue = deque([(self.gameplay, [], 0)])
@@ -180,9 +194,7 @@ class Sokoban:
             current_gameplay, path, cost = queue.popleft()
 
             if current_gameplay.check_win():
-                self.visitedLabel["text"] = f"Visited: {len(visited)}"
-                self.animateSolution(path)
-                return True
+                return path, len(visited), current_gameplay.step
 
             for new_gameplay, move in self.getChildren(current_gameplay):
                 if tuple(new_gameplay.board.flatten()) not in visited:
@@ -199,9 +211,7 @@ class Sokoban:
             current_gameplay, path = stack.pop()
 
             if current_gameplay.check_win():
-                self.visitedLabel["text"] = f"Visited: {len(visited)}"
-                self.animateSolution(path)
-                return True
+                return path, len(visited), current_gameplay.step
 
             for new_gameplay, move in self.getChildren(current_gameplay):
                 if tuple(new_gameplay.board.flatten()) not in visited:
@@ -222,9 +232,7 @@ class Sokoban:
                 
                 #check win state
                 if current_gameplay.check_win():
-                    self.visitedLabel["text"] = f"Visited: {len(visited)}"
-                    self.animateSolution(path)
-                    return True
+                    return path, len(visited), current_gameplay.step
                 
                 if depth == 0:
                     latestStates.append((current_gameplay, path, max_depth))
@@ -243,9 +251,7 @@ class Sokoban:
             current_gameplay, path, cost = queue.popleft()
 
             if current_gameplay.check_win():
-                self.visitedLabel["text"] = f"Visited: {len(visited)}"
-                self.animateSolution(path)
-                return True
+                return path, len(visited), current_gameplay.step
 
             for new_gameplay, move in self.getChildren(current_gameplay):
                 if tuple(new_gameplay.board.flatten()) not in visited:
@@ -262,9 +268,7 @@ class Sokoban:
             current_gameplay, path, cost = queue.popleft()
 
             if current_gameplay.check_win():
-                self.visitedLabel["text"] = f"Visited: {len(visited)}"
-                self.animateSolution(path)
-                return True
+                return path, len(visited), current_gameplay.step
 
             for new_gameplay, move in self.getChildren(current_gameplay):
                 if tuple(new_gameplay.board.flatten()) not in visited:
@@ -298,9 +302,7 @@ class Sokoban:
             current_gameplay, path = queue.popleft()
     
             if current_gameplay.check_win():
-                self.visitedLabel["text"] = f"Visited: {len(visited)}"
-                self.animateSolution(path)
-                return True
+                return path, len(visited), current_gameplay.step
             
             schedule = self.getChildren(current_gameplay)
             schedule = sorted(schedule , key=lambda x: self.heuristic(x[0]))
